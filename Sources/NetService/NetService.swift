@@ -107,4 +107,42 @@ public class NetworkService {
             }
         }.resume()
     }
+    
+    public func fetchData(urlString: String, headers: [String: String]? = nil, completion: @escaping (Result<Data, Error>) -> Void) {
+        guard let url = URL(string: urlString) else {
+            completion(.failure(NetworkError.invalidURL))
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        headers?.forEach { key, value in
+            request.addValue(value, forHTTPHeaderField: key)
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            
+            guard let response = response as? HTTPURLResponse else {
+                completion(.failure(NetworkError.wrongResponse))
+                return
+            }
+            
+            guard (200...299).contains(response.statusCode) else {
+                completion(.failure(NetworkError.wrongStatusCode(code: response.statusCode)))
+                return
+            }
+            
+            guard let data = data else {
+                completion(.failure(NetworkError.decodeError))
+                return
+            }
+            
+            DispatchQueue.main.async {
+                completion(.success(data))
+            }
+        }.resume()
+    }
 }
